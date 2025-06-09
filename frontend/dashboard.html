@@ -319,6 +319,75 @@
         .close-modal:hover {
             color: #333;
         }
+        
+        /* Sistema de Notificações */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .notification.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .notification.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .notification.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        /* Validação em tempo real */
+        input.field-error {
+            border-color: #dc3545 !important;
+        }
+        
+        input.field-success {
+            border-color: #28a745 !important;
+        }
+        
+        .field-message {
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .field-message.error {
+            color: #dc3545;
+            display: block;
+        }
+        
+        .field-message.success {
+            color: #28a745;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -576,6 +645,96 @@
             document.getElementById('userEmail').textContent = userEmail;
         }
         
+        // ========== SISTEMA DE NOTIFICAÇÕES ==========
+        function showNotification(message, type = 'info') {
+            // Remover notificação existente se houver
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+            
+            // Criar nova notificação
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Mostrar com animação
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Auto-ocultar após 5 segundos
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 5000);
+        }
+        
+        // ========== VALIDAÇÕES EM TEMPO REAL ==========
+        function setupFormValidations() {
+            // Validar código do lote em tempo real
+            const codigoInput = document.getElementById('codigo');
+            if (codigoInput) {
+                // Adicionar mensagem de validação
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'field-message';
+                codigoInput.parentNode.appendChild(messageDiv);
+                
+                codigoInput.addEventListener('blur', async () => {
+                    const codigo = codigoInput.value.trim();
+                    if (codigo) {
+                        try {
+                            const { data, error } = await supabaseClient
+                                .from('lote_gado')
+                                .select('codigo')
+                                .eq('codigo', codigo)
+                                .single();
+                            
+                            if (data) {
+                                codigoInput.classList.add('field-error');
+                                codigoInput.classList.remove('field-success');
+                                messageDiv.textContent = 'Este código já está em uso!';
+                                messageDiv.className = 'field-message error';
+                            } else {
+                                codigoInput.classList.add('field-success');
+                                codigoInput.classList.remove('field-error');
+                                messageDiv.textContent = 'Código disponível';
+                                messageDiv.className = 'field-message success';
+                            }
+                        } catch (error) {
+                            // Código disponível
+                            codigoInput.classList.add('field-success');
+                            codigoInput.classList.remove('field-error');
+                            messageDiv.textContent = 'Código disponível';
+                            messageDiv.className = 'field-message success';
+                        }
+                    }
+                });
+            }
+            
+            // Calcular e mostrar peso médio
+            const qtdAnimaisInput = document.getElementById('qtdAnimais');
+            const pesoEntradaInput = document.getElementById('pesoEntrada');
+            
+            function calcularPesoMedio() {
+                const qtd = parseInt(qtdAnimaisInput.value) || 0;
+                const pesoTotal = parseFloat(pesoEntradaInput.value) || 0;
+                
+                if (qtd > 0 && pesoTotal > 0) {
+                    const pesoMedio = (pesoTotal / qtd).toFixed(2);
+                    showNotification(`Peso médio por animal: ${pesoMedio} kg`, 'info');
+                }
+            }
+            
+            if (qtdAnimaisInput && pesoEntradaInput) {
+                qtdAnimaisInput.addEventListener('change', calcularPesoMedio);
+                pesoEntradaInput.addEventListener('change', calcularPesoMedio);
+            }
+        }
+        
         // Função de logout
         function logout() {
             localStorage.removeItem('isLoggedIn');
@@ -698,6 +857,7 @@
                 }
             } catch (error) {
                 console.error('Erro ao carregar dashboard:', error);
+                showNotification('Erro ao carregar dados do dashboard', 'error');
             }
         }
         
@@ -745,7 +905,8 @@
                                 </span>
                             </td>
                             <td>
-                                <button class="btn-primary" style="padding: 5px 10px; font-size: 12px;">
+                                <button class="btn-primary" style="padding: 5px 10px; font-size: 12px;" 
+                                        onclick="window.location.href='lote-detalhes.html?id=${lote.id}'">
                                     Detalhes
                                 </button>
                             </td>
@@ -754,6 +915,7 @@
                 }
             } catch (error) {
                 console.error('Erro ao carregar lotes CEAC:', error);
+                showNotification('Erro ao carregar lotes', 'error');
             }
         }
         
@@ -776,6 +938,7 @@
                 }
             } catch (error) {
                 console.error('Erro ao carregar proprietários:', error);
+                showNotification('Erro ao carregar proprietários', 'error');
             }
         }
         
@@ -784,11 +947,20 @@
             document.getElementById(modalId).style.display = 'block';
             // Definir data de hoje como padrão
             document.getElementById('dataEntrada').valueAsDate = new Date();
+            setupFormValidations();
         }
         
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
             document.getElementById('formNovoLote').reset();
+            // Limpar classes de validação
+            const inputs = document.querySelectorAll('.field-error, .field-success');
+            inputs.forEach(input => {
+                input.classList.remove('field-error', 'field-success');
+            });
+            // Limpar mensagens
+            const messages = document.querySelectorAll('.field-message');
+            messages.forEach(msg => msg.remove());
         }
         
         // Fechar modal ao clicar fora
@@ -798,39 +970,83 @@
             }
         }
         
-        // Salvar novo lote
+        // Salvar novo lote - VERSÃO MELHORADA
         document.getElementById('formNovoLote').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = new FormData(e.target);
+            
+            // Validações
+            if (!formData.get('proprietario')) {
+                showNotification('Por favor, selecione um proprietário', 'warning');
+                return;
+            }
+            
             const novoLote = {
                 codigo: formData.get('codigo'),
                 descricao: formData.get('descricao'),
                 qtd_animais: parseInt(formData.get('qtdAnimais')),
                 peso_entrada: parseFloat(formData.get('pesoEntrada')),
-                preco_compra: parseFloat(formData.get('precoCompra')) || null,
+                preco_compra: parseFloat(formData.get('precoCompra')) || 0,
                 fazenda: formData.get('fazenda'),
                 data_entrada: formData.get('dataEntrada'),
                 proprietario_id: formData.get('proprietario'),
                 status: 'ATIVO'
             };
             
+            // Validações adicionais
+            if (novoLote.qtd_animais <= 0) {
+                showNotification('Quantidade de animais deve ser maior que zero', 'warning');
+                return;
+            }
+            
+            if (novoLote.peso_entrada <= 0) {
+                showNotification('Peso de entrada deve ser maior que zero', 'warning');
+                return;
+            }
+            
+            // Mostrar loading no botão
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Salvando...';
+            submitBtn.disabled = true;
+            
             try {
                 const { data, error } = await supabaseClient
                     .from('lote_gado')
-                    .insert([novoLote]);
+                    .insert([novoLote])
+                    .select();
                 
                 if (error) {
-                    alert('Erro ao salvar lote: ' + error.message);
+                    if (error.code === '23505') {
+                        showNotification('Código do lote já existe! Use outro código.', 'error');
+                    } else {
+                        showNotification(`Erro ao salvar: ${error.message}`, 'error');
+                    }
                 } else {
-                    alert('Lote cadastrado com sucesso!');
+                    showNotification('Lote cadastrado com sucesso!', 'success');
                     closeModal('loteModal');
-                    carregarLotesCEAC();
+                    
+                    // Recarregar dados
+                    if (document.getElementById('ceac-page').classList.contains('active')) {
+                        await carregarLotesCEAC();
+                    }
+                    await carregarDashboard();
                 }
             } catch (error) {
                 console.error('Erro ao salvar lote:', error);
-                alert('Erro ao salvar lote. Tente novamente.');
+                showNotification('Erro ao salvar lote. Tente novamente.', 'error');
+            } finally {
+                // Restaurar botão
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
+        });
+        
+        // ========== INICIALIZAR ==========
+        // Inicializar validações quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFormValidations();
         });
         
         // Carregar dashboard ao iniciar
@@ -838,160 +1054,3 @@
     </script>
 </body>
 </html>
-// Adicione estas funções ao dashboard.html para melhor tratamento de erros
-
-// Função para mostrar notificações
-function showNotification(message, type = 'info') {
-    // Criar elemento de notificação se não existir
-    let notification = document.getElementById('notification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'notification';
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 5px;
-            z-index: 1000;
-            transition: opacity 0.3s;
-            max-width: 300px;
-        `;
-        document.body.appendChild(notification);
-    }
-    
-    // Definir cor baseada no tipo
-    const colors = {
-        success: { bg: '#d4edda', text: '#155724', border: '#c3e6cb' },
-        error: { bg: '#f8d7da', text: '#721c24', border: '#f5c6cb' },
-        info: { bg: '#d1ecf1', text: '#0c5460', border: '#bee5eb' },
-        warning: { bg: '#fff3cd', text: '#856404', border: '#ffeaa7' }
-    };
-    
-    const color = colors[type] || colors.info;
-    notification.style.backgroundColor = color.bg;
-    notification.style.color = color.text;
-    notification.style.border = `1px solid ${color.border}`;
-    notification.textContent = message;
-    notification.style.opacity = '1';
-    
-    // Auto-ocultar após 5 segundos
-    setTimeout(() => {
-        notification.style.opacity = '0';
-    }, 5000);
-}
-
-// Função melhorada para salvar novo lote
-async function salvarNovoLote(formData) {
-    try {
-        // Validar proprietário
-        if (!formData.get('proprietario')) {
-            showNotification('Por favor, selecione um proprietário', 'warning');
-            return;
-        }
-        
-        const novoLote = {
-            codigo: formData.get('codigo'),
-            descricao: formData.get('descricao'),
-            qtd_animais: parseInt(formData.get('qtdAnimais')),
-            peso_entrada: parseFloat(formData.get('pesoEntrada')),
-            preco_compra: parseFloat(formData.get('precoCompra')) || 0,
-            fazenda: formData.get('fazenda'),
-            data_entrada: formData.get('dataEntrada'),
-            proprietario_id: formData.get('proprietario'),
-            status: 'ATIVO'
-        };
-        
-        // Validar dados
-        if (novoLote.qtd_animais <= 0) {
-            showNotification('Quantidade de animais deve ser maior que zero', 'warning');
-            return;
-        }
-        
-        if (novoLote.peso_entrada <= 0) {
-            showNotification('Peso de entrada deve ser maior que zero', 'warning');
-            return;
-        }
-        
-        // Mostrar loading
-        const submitBtn = document.querySelector('#formNovoLote button[type="submit"]');
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Salvando...';
-        submitBtn.disabled = true;
-        
-        const { data, error } = await supabaseClient
-            .from('lote_gado')
-            .insert([novoLote])
-            .select();
-        
-        if (error) {
-            if (error.code === '23505') {
-                showNotification('Código do lote já existe!', 'error');
-            } else {
-                showNotification(`Erro ao salvar: ${error.message}`, 'error');
-            }
-        } else {
-            showNotification('Lote cadastrado com sucesso!', 'success');
-            closeModal('loteModal');
-            
-            // Recarregar dados
-            if (document.getElementById('ceac-page').classList.contains('active')) {
-                await carregarLotesCEAC();
-            } else {
-                await carregarDashboard();
-            }
-        }
-        
-        // Restaurar botão
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        
-    } catch (error) {
-        console.error('Erro ao salvar lote:', error);
-        showNotification('Erro ao salvar lote. Tente novamente.', 'error');
-    }
-}
-
-// Adicionar validação em tempo real
-document.addEventListener('DOMContentLoaded', () => {
-    // Validar código do lote em tempo real
-    const codigoInput = document.getElementById('codigo');
-    if (codigoInput) {
-        codigoInput.addEventListener('blur', async () => {
-            const codigo = codigoInput.value.trim();
-            if (codigo) {
-                const { data, error } = await supabaseClient
-                    .from('lote_gado')
-                    .select('codigo')
-                    .eq('codigo', codigo)
-                    .single();
-                
-                if (data) {
-                    codigoInput.style.borderColor = '#dc3545';
-                    showNotification('Este código já está em uso!', 'warning');
-                } else {
-                    codigoInput.style.borderColor = '#28a745';
-                }
-            }
-        });
-    }
-    
-    // Calcular peso médio automaticamente
-    const qtdAnimaisInput = document.getElementById('qtdAnimais');
-    const pesoEntradaInput = document.getElementById('pesoEntrada');
-    
-    function calcularPesoMedio() {
-        const qtd = parseInt(qtdAnimaisInput.value) || 0;
-        const pesoTotal = parseFloat(pesoEntradaInput.value) || 0;
-        
-        if (qtd > 0 && pesoTotal > 0) {
-            const pesoMedio = (pesoTotal / qtd).toFixed(2);
-            showNotification(`Peso médio por animal: ${pesoMedio} kg`, 'info');
-        }
-    }
-    
-    if (qtdAnimaisInput && pesoEntradaInput) {
-        qtdAnimaisInput.addEventListener('change', calcularPesoMedio);
-        pesoEntradaInput.addEventListener('change', calcularPesoMedio);
-    }
-});
