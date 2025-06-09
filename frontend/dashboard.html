@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ecossistema Acex - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -68,6 +69,7 @@
             text-decoration: none;
             transition: all 0.3s;
             border-left: 3px solid transparent;
+            cursor: pointer;
         }
         
         .menu-item:hover {
@@ -108,6 +110,8 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
         }
         
         .card:hover {
@@ -128,8 +132,15 @@
         
         .card-icon {
             font-size: 40px;
-            float: right;
-            opacity: 0.3;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            opacity: 0.2;
+        }
+        
+        .card-loading {
+            color: #999;
+            font-size: 20px;
         }
         
         /* Table */
@@ -138,12 +149,34 @@
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
         
         .table-title {
             font-size: 20px;
             color: #333;
-            margin-bottom: 20px;
+        }
+        
+        .btn-primary {
+            background: #2a5298;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: #1e3c72;
         }
         
         table {
@@ -172,6 +205,7 @@
             border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
+            text-transform: uppercase;
         }
         
         .status-ativo {
@@ -183,103 +217,200 @@
             background: #cce5ff;
             color: #004085;
         }
+        
+        .status-baixa {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        /* Page sections */
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: relative;
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 10px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            color: #333;
+        }
+        
+        .close-modal {
+            font-size: 30px;
+            color: #999;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        
+        .close-modal:hover {
+            color: #333;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Ecossistema Acex</h1>
         <div class="user-info">
-            <span id="userEmail">admin@acexcapital.com.br</span>
+            <span id="userEmail">Carregando...</span>
             <a href="#" class="logout-btn" onclick="logout()">Sair</a>
         </div>
     </div>
     
     <div class="container">
         <nav class="sidebar">
-            <a href="#" class="menu-item active" onclick="showPage('dashboard')">
+            <a class="menu-item active" onclick="showPage('dashboard')">
                 📊 Dashboard
             </a>
-            <a href="#" class="menu-item" onclick="showPage('ceac')">
+            <a class="menu-item" onclick="showPage('ceac')">
                 🐂 CEAC - Gado
             </a>
-            <a href="#" class="menu-item" onclick="showPage('financeiro')">
+            <a class="menu-item" onclick="showPage('financeiro')">
                 💰 Financeiro
             </a>
-            <a href="#" class="menu-item" onclick="showPage('b3x')">
+            <a class="menu-item" onclick="showPage('b3x')">
                 📈 B3X Hub
             </a>
-            <a href="#" class="menu-item" onclick="showPage('documentos')">
+            <a class="menu-item" onclick="showPage('documentos')">
                 📄 Documentos
             </a>
-            <a href="#" class="menu-item" onclick="showPage('relatorios')">
+            <a class="menu-item" onclick="showPage('relatorios')">
                 📋 Relatórios
             </a>
         </nav>
         
         <main class="main-content">
             <!-- Dashboard Page -->
-            <div id="dashboard-page" class="page">
+            <div id="dashboard-page" class="page active">
                 <h2 class="page-title">Dashboard Principal</h2>
                 
                 <div class="cards-grid">
                     <div class="card">
                         <div class="card-icon">🐂</div>
                         <div class="card-title">Total de Lotes Ativos</div>
-                        <div class="card-value">12</div>
+                        <div class="card-value" id="totalLotesAtivos">
+                            <span class="card-loading">Carregando...</span>
+                        </div>
                     </div>
                     
                     <div class="card">
                         <div class="card-icon">⚖️</div>
                         <div class="card-title">Peso Total (kg)</div>
-                        <div class="card-value">45.320</div>
+                        <div class="card-value" id="pesoTotal">
+                            <span class="card-loading">Carregando...</span>
+                        </div>
                     </div>
                     
                     <div class="card">
                         <div class="card-icon">💵</div>
                         <div class="card-title">Valor Total Investido</div>
-                        <div class="card-value">R$ 1.245.000</div>
+                        <div class="card-value" id="valorInvestido">
+                            <span class="card-loading">Carregando...</span>
+                        </div>
                     </div>
                     
                     <div class="card">
                         <div class="card-icon">📈</div>
-                        <div class="card-title">Resultado Projetado</div>
-                        <div class="card-value">R$ 187.000</div>
+                        <div class="card-title">Total de Animais</div>
+                        <div class="card-value" id="totalAnimais">
+                            <span class="card-loading">Carregando...</span>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="data-table">
-                    <h3 class="table-title">Últimos Lotes Cadastrados</h3>
+                    <div class="table-header">
+                        <h3 class="table-title">Últimos Lotes Cadastrados</h3>
+                    </div>
                     <table>
                         <thead>
                             <tr>
                                 <th>Código</th>
                                 <th>Descrição</th>
                                 <th>Qtd Animais</th>
+                                <th>Peso Entrada</th>
                                 <th>Data Entrada</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="lotesTableBody">
                             <tr>
-                                <td>LOTE-001</td>
-                                <td>Lote de 50 bois nelore</td>
-                                <td>50</td>
-                                <td>15/03/2024</td>
-                                <td><span class="status status-ativo">ATIVO</span></td>
-                            </tr>
-                            <tr>
-                                <td>LOTE-002</td>
-                                <td>Lote misto angus/nelore</td>
-                                <td>30</td>
-                                <td>10/03/2024</td>
-                                <td><span class="status status-ativo">ATIVO</span></td>
-                            </tr>
-                            <tr>
-                                <td>LOTE-003</td>
-                                <td>Lote premium angus</td>
-                                <td>25</td>
-                                <td>01/03/2024</td>
-                                <td><span class="status status-vendido">VENDIDO</span></td>
+                                <td colspan="6" style="text-align: center; padding: 20px;">
+                                    Carregando lotes...
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -287,20 +418,153 @@
             </div>
             
             <!-- CEAC Page -->
-            <div id="ceac-page" class="page" style="display: none;">
+            <div id="ceac-page" class="page">
                 <h2 class="page-title">Módulo CEAC - Gestão de Gado</h2>
-                <p>Funcionalidade em desenvolvimento...</p>
+                
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Lotes de Gado</h3>
+                        <button class="btn-primary" onclick="openModal('loteModal')">
+                            + Novo Lote
+                        </button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Descrição</th>
+                                <th>Fazenda</th>
+                                <th>Qtd Animais</th>
+                                <th>Peso Entrada</th>
+                                <th>Data Entrada</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ceacLotesTableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 20px;">
+                                    Carregando lotes...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             
             <!-- Outras páginas -->
-            <div id="financeiro-page" class="page" style="display: none;">
+            <div id="financeiro-page" class="page">
                 <h2 class="page-title">Módulo Financeiro</h2>
-                <p>Funcionalidade em desenvolvimento...</p>
+                <div class="empty-state">
+                    <h3>🚧 Em Desenvolvimento</h3>
+                    <p>O módulo financeiro estará disponível em breve!</p>
+                </div>
+            </div>
+            
+            <div id="b3x-page" class="page">
+                <h2 class="page-title">B3X Hub</h2>
+                <div class="empty-state">
+                    <h3>🚧 Em Desenvolvimento</h3>
+                    <p>O módulo B3X Hub estará disponível em breve!</p>
+                </div>
+            </div>
+            
+            <div id="documentos-page" class="page">
+                <h2 class="page-title">Gestão de Documentos</h2>
+                <div class="empty-state">
+                    <h3>🚧 Em Desenvolvimento</h3>
+                    <p>O módulo de documentos estará disponível em breve!</p>
+                </div>
+            </div>
+            
+            <div id="relatorios-page" class="page">
+                <h2 class="page-title">Relatórios</h2>
+                <div class="empty-state">
+                    <h3>🚧 Em Desenvolvimento</h3>
+                    <p>Os relatórios estarão disponíveis em breve!</p>
+                </div>
             </div>
         </main>
     </div>
     
+    <!-- Modal Novo Lote -->
+    <div id="loteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Novo Lote de Gado</h3>
+                <button class="close-modal" onclick="closeModal('loteModal')">&times;</button>
+            </div>
+            
+            <form id="formNovoLote">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="codigo">Código do Lote*</label>
+                        <input type="text" id="codigo" name="codigo" required placeholder="Ex: LOTE-002">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="qtdAnimais">Quantidade de Animais*</label>
+                        <input type="number" id="qtdAnimais" name="qtdAnimais" required min="1" placeholder="Ex: 50">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="descricao">Descrição*</label>
+                    <input type="text" id="descricao" name="descricao" required placeholder="Ex: Lote de bois nelore">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pesoEntrada">Peso Total Entrada (kg)*</label>
+                        <input type="number" id="pesoEntrada" name="pesoEntrada" required min="0" step="0.01" placeholder="Ex: 15000">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="precoCompra">Preço de Compra (R$)</label>
+                        <input type="number" id="precoCompra" name="precoCompra" min="0" step="0.01" placeholder="Ex: 75000">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fazenda">Fazenda*</label>
+                        <input type="text" id="fazenda" name="fazenda" required placeholder="Ex: Fazenda Boa Vista">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dataEntrada">Data de Entrada*</label>
+                        <input type="date" id="dataEntrada" name="dataEntrada" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="proprietario">Proprietário*</label>
+                    <select id="proprietario" name="proprietario" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 30px;">
+                    <button type="button" class="btn-primary" style="background: #6c757d;" onclick="closeModal('loteModal')">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary" style="flex: 1;">
+                        Salvar Lote
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://yidrgpisaoaymlygjiha.supabase.com';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHJncGlzYW9heW1seWdqaWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MjM1OTksImV4cCI6MjA2NDk5OTU5OX0.Z0yJ3Iw7lR-nxlJo9HeTvQKm5cr0FMSc7Zj3Vr6AiJQ';
+        
+        // Inicializar Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
         // Verificar se o usuário está logado
         if (localStorage.getItem('isLoggedIn') !== 'true') {
             window.location.href = 'login.html';
@@ -316,6 +580,8 @@
         function logout() {
             localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('userEmail');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userNome');
             window.location.href = 'login.html';
         }
         
@@ -323,13 +589,13 @@
         function showPage(pageName) {
             // Esconder todas as páginas
             document.querySelectorAll('.page').forEach(page => {
-                page.style.display = 'none';
+                page.classList.remove('active');
             });
             
             // Mostrar a página selecionada
             const selectedPage = document.getElementById(pageName + '-page');
             if (selectedPage) {
-                selectedPage.style.display = 'block';
+                selectedPage.classList.add('active');
             }
             
             // Atualizar menu ativo
@@ -337,7 +603,238 @@
                 item.classList.remove('active');
             });
             event.target.classList.add('active');
+            
+            // Carregar dados da página
+            if (pageName === 'dashboard') {
+                carregarDashboard();
+            } else if (pageName === 'ceac') {
+                carregarLotesCEAC();
+                carregarProprietarios();
+            }
         }
+        
+        // Função para formatar moeda
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor || 0);
+        }
+        
+        // Função para formatar número
+        function formatarNumero(valor) {
+            return new Intl.NumberFormat('pt-BR').format(valor || 0);
+        }
+        
+        // Função para formatar data
+        function formatarData(data) {
+            if (!data) return '-';
+            return new Date(data).toLocaleDateString('pt-BR');
+        }
+        
+        // Carregar dados do dashboard
+        async function carregarDashboard() {
+            try {
+                // Buscar lotes ativos
+                const { data: lotesAtivos, error: error1 } = await supabaseClient
+                    .from('lote_gado')
+                    .select('*')
+                    .eq('status', 'ATIVO');
+                
+                if (!error1 && lotesAtivos) {
+                    // Total de lotes ativos
+                    document.getElementById('totalLotesAtivos').textContent = lotesAtivos.length;
+                    
+                    // Calcular totais
+                    let pesoTotal = 0;
+                    let valorTotal = 0;
+                    let totalAnimais = 0;
+                    
+                    lotesAtivos.forEach(lote => {
+                        pesoTotal += parseFloat(lote.peso_entrada || 0);
+                        valorTotal += parseFloat(lote.preco_compra || 0);
+                        totalAnimais += parseInt(lote.qtd_animais || 0);
+                    });
+                    
+                    document.getElementById('pesoTotal').textContent = formatarNumero(pesoTotal);
+                    document.getElementById('valorInvestido').textContent = formatarMoeda(valorTotal);
+                    document.getElementById('totalAnimais').textContent = formatarNumero(totalAnimais);
+                }
+                
+                // Buscar últimos lotes
+                const { data: ultimosLotes, error: error2 } = await supabaseClient
+                    .from('lote_gado')
+                    .select('*')
+                    .order('criado_em', { ascending: false })
+                    .limit(5);
+                
+                if (!error2 && ultimosLotes) {
+                    const tbody = document.getElementById('lotesTableBody');
+                    
+                    if (ultimosLotes.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 20px;">
+                                    Nenhum lote cadastrado ainda.
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tbody.innerHTML = ultimosLotes.map(lote => `
+                            <tr>
+                                <td>${lote.codigo}</td>
+                                <td>${lote.descricao}</td>
+                                <td>${lote.qtd_animais}</td>
+                                <td>${formatarNumero(lote.peso_entrada)} kg</td>
+                                <td>${formatarData(lote.data_entrada)}</td>
+                                <td>
+                                    <span class="status status-${lote.status.toLowerCase()}">
+                                        ${lote.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dashboard:', error);
+            }
+        }
+        
+        // Carregar lotes do módulo CEAC
+        async function carregarLotesCEAC() {
+            try {
+                const { data: lotes, error } = await supabaseClient
+                    .from('lote_gado')
+                    .select('*')
+                    .order('criado_em', { ascending: false });
+                
+                const tbody = document.getElementById('ceacLotesTableBody');
+                
+                if (error) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 20px; color: red;">
+                                Erro ao carregar lotes: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                if (!lotes || lotes.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 20px;">
+                                Nenhum lote cadastrado. Clique em "Novo Lote" para começar.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = lotes.map(lote => `
+                        <tr>
+                            <td>${lote.codigo}</td>
+                            <td>${lote.descricao}</td>
+                            <td>${lote.fazenda}</td>
+                            <td>${lote.qtd_animais}</td>
+                            <td>${formatarNumero(lote.peso_entrada)} kg</td>
+                            <td>${formatarData(lote.data_entrada)}</td>
+                            <td>
+                                <span class="status status-${lote.status.toLowerCase()}">
+                                    ${lote.status}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn-primary" style="padding: 5px 10px; font-size: 12px;">
+                                    Detalhes
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar lotes CEAC:', error);
+            }
+        }
+        
+        // Carregar proprietários para o select
+        async function carregarProprietarios() {
+            try {
+                const { data: pessoas, error } = await supabaseClient
+                    .from('pessoa')
+                    .select('id, nome, cpf_cnpj')
+                    .eq('ativo', true)
+                    .order('nome');
+                
+                const select = document.getElementById('proprietario');
+                
+                if (!error && pessoas) {
+                    select.innerHTML = '<option value="">Selecione...</option>' + 
+                        pessoas.map(pessoa => 
+                            `<option value="${pessoa.id}">${pessoa.nome} - ${pessoa.cpf_cnpj}</option>`
+                        ).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar proprietários:', error);
+            }
+        }
+        
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+            // Definir data de hoje como padrão
+            document.getElementById('dataEntrada').valueAsDate = new Date();
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            document.getElementById('formNovoLote').reset();
+        }
+        
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+        
+        // Salvar novo lote
+        document.getElementById('formNovoLote').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const novoLote = {
+                codigo: formData.get('codigo'),
+                descricao: formData.get('descricao'),
+                qtd_animais: parseInt(formData.get('qtdAnimais')),
+                peso_entrada: parseFloat(formData.get('pesoEntrada')),
+                preco_compra: parseFloat(formData.get('precoCompra')) || null,
+                fazenda: formData.get('fazenda'),
+                data_entrada: formData.get('dataEntrada'),
+                proprietario_id: formData.get('proprietario'),
+                status: 'ATIVO'
+            };
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('lote_gado')
+                    .insert([novoLote]);
+                
+                if (error) {
+                    alert('Erro ao salvar lote: ' + error.message);
+                } else {
+                    alert('Lote cadastrado com sucesso!');
+                    closeModal('loteModal');
+                    carregarLotesCEAC();
+                }
+            } catch (error) {
+                console.error('Erro ao salvar lote:', error);
+                alert('Erro ao salvar lote. Tente novamente.');
+            }
+        });
+        
+        // Carregar dashboard ao iniciar
+        carregarDashboard();
     </script>
 </body>
 </html>
