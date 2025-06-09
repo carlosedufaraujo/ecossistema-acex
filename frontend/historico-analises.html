@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Análises - Ecossistema Acex</title>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #64748b;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+        
+        .analyses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .analysis-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .analysis-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .analysis-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+        
+        .analysis-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        
+        .analysis-code {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .scenario-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .scenario-badge.realista {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .scenario-badge.pessimista {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .scenario-badge.otimista {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .analysis-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .metric {
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        
+        .metric-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        
+        .metric-value.positive {
+            color: #10b981;
+        }
+        
+        .metric-value.negative {
+            color: #ef4444;
+        }
+        
+        .analysis-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #64748b;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: #64748b;
+        }
+        
+        .empty i {
+            font-size: 48px;
+            color: #e2e8f0;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Histórico de Análises</h1>
+            <p>Visualize todas as análises salvas do ConfiPro Analytics</p>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="voltar()">
+                <i class="fas fa-arrow-left"></i>
+                Voltar
+            </button>
+            
+            <button class="btn btn-primary" onclick="novaAnalise()">
+                <i class="fas fa-plus"></i>
+                Nova Análise
+            </button>
+        </div>
+        
+        <div id="loading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Carregando análises...</p>
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div id="analysesGrid" class="analyses-grid"></div>
+            
+            <div id="emptyState" class="empty" style="display: none;">
+                <i class="fas fa-chart-line"></i>
+                <h3>Nenhuma análise encontrada</h3>
+                <p>Crie sua primeira análise no ConfiPro Analytics</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://yidrgpisaoaymlygjiha.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHJncGlzYW9heW1seWdqaWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxOTE4NzMsImV4cCI6MjA1MTc2Nzg3M30.2P6lsCrn-QmSxFNhbBBrNs0T7muLXlOYNjB1RQQDtto';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Verificar login
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+        
+        // Funções
+        function voltar() {
+            window.location.href = 'analise-confinamento.html';
+        }
+        
+        function novaAnalise() {
+            window.location.href = 'analise-confinamento.html';
+        }
+        
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+        
+        function formatNumber(value) {
+            return new Intl.NumberFormat('pt-BR').format(value);
+        }
+        
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('pt-BR');
+        }
+        
+        // Carregar análises
+        async function carregarAnalises() {
+            try {
+                const { data: analises, error } = await supabaseClient
+                    .from('analise_confinamento')
+                    .select('*')
+                    .order('criado_em', { ascending: false });
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                if (error) {
+                    throw error;
+                }
+                
+                if (!analises || analises.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    return;
+                }
+                
+                const grid = document.getElementById('analysesGrid');
+                grid.innerHTML = analises.map(analise => {
+                    const isPositive = analise.resultado_animal > 0;
+                    
+                    return `
+                        <div class="analysis-card" onclick="verDetalhes('${analise.id}')">
+                            <div class="analysis-header">
+                                <div>
+                                    <div class="analysis-title">${analise.descricao}</div>
+                                    <div class="analysis-code">${analise.codigo}</div>
+                                </div>
+                                <span class="scenario-badge ${analise.cenario}">
+                                    ${analise.cenario.charAt(0).toUpperCase() + analise.cenario.slice(1)}
+                                </span>
+                            </div>
+                            
+                            <div class="analysis-metrics">
+                                <div class="metric">
+                                    <div class="metric-label">Resultado/Animal</div>
+                                    <div class="metric-value ${isPositive ? 'positive' : 'negative'}">
+                                        ${formatCurrency(analise.resultado_animal)}
+                                    </div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-label">Margem</div>
+                                    <div class="metric-value ${isPositive ? 'positive' : 'negative'}">
+                                        ${analise.margem_percentual?.toFixed(1)}%
+                                    </div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-label">Dias Cocho</div>
+                                    <div class="metric-value">${analise.dias_cocho}</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-label">Quantidade</div>
+                                    <div class="metric-value">${formatNumber(analise.quantidade)}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="analysis-footer">
+                                <span>${formatDate(analise.criado_em)}</span>
+                                <span>Ver detalhes →</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Erro ao carregar análises:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: 'Erro ao carregar histórico de análises'
+                });
+            }
+        }
+        
+        async function verDetalhes(id) {
+            try {
+                const { data: analise, error } = await supabaseClient
+                    .from('analise_confinamento')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+                
+                if (error) throw error;
+                
+                const detalhesHtml = `
+                    <h2>Detalhes da Análise</h2>
+                    <div style="margin-top: 20px;">
+                        <p><strong>Descrição:</strong> ${analise.descricao}</p>
+                        <p><strong>Código:</strong> ${analise.codigo}</p>
+                        <p><strong>Cenário:</strong> ${analise.cenario}</p>
+                        <p><strong>Data:</strong> ${formatDate(analise.criado_em)}</p>
+                        
+                        <h3 style="margin-top: 20px;">Dados da Simulação</h3>
+                        <p><strong>Preço Compra:</strong> ${formatCurrency(analise.preco_compra)}</p>
+                        <p><strong>Preço Venda:</strong> ${formatCurrency(analise.preco_venda)}</p>
+                        <p><strong>Peso Inicial:</strong> ${analise.peso_inicial} kg</p>
+                        <p><strong>Peso Final:</strong> ${analise.peso_final} kg</p>
+                        <p><strong>Quantidade:</strong> ${analise.quantidade} animais</p>
+                        
+                        <h3 style="margin-top: 20px;">Resultados</h3>
+                        <p><strong>Dias de Cocho:</strong> ${analise.dias_cocho} dias</p>
+                        <p><strong>Resultado por Animal:</strong> ${formatCurrency(analise.resultado_animal)}</p>
+                        <p><strong>Margem:</strong> ${analise.margem_percentual?.toFixed(2)}%</p>
+                        <p><strong>Resultado Total:</strong> ${formatCurrency(analise.resultado_total)}</p>
+                    </div>
+                `;
+                
+                Swal.fire({
+                    html: detalhesHtml,
+                    width: '600px',
+                    confirmButtonText: 'Fechar',
+                    confirmButtonColor: '#3b82f6'
+                });
+                
+            } catch (error) {
+                console.error('Erro ao carregar detalhes:', error);
+            }
+        }
+        
+        // Carregar ao iniciar
+        carregarAnalises();
+    </script>
+</body>
+</html>
