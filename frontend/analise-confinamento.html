@@ -755,6 +755,44 @@
             <i class="fas fa-arrow-left"></i>
             Voltar ao Dashboard
         </a>
+        <!-- Botão Salvar Análise -->
+<button onclick="salvarAnalise()" style="
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 16px;
+    transition: all 0.2s ease;
+">
+    <i class="fas fa-save"></i>
+    Salvar Análise
+</button>
+
+<button onclick="verHistorico()" style="
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: all 0.2s ease;
+">
+    <i class="fas fa-history"></i>
+    Ver Histórico
+</button>
         
         <!-- Análise de Cenários -->
         <div class="cenarios-card">
@@ -1548,7 +1586,96 @@
         if (localStorage.getItem('isLoggedIn') !== 'true') {
             window.location.href = 'login.html';
         }
-        
+        // Configuração do Supabase (adicionar se não existir)
+const SUPABASE_URL = 'https://yidrgpisaoaymlygjiha.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHJncGlzYW9heW1seWdqaWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxOTE4NzMsImV4cCI6MjA1MTc2Nzg3M30.2P6lsCrn-QmSxFNhbBBrNs0T7muLXlOYNjB1RQQDtto';
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Função para salvar análise
+async function salvarAnalise() {
+    // Verificar se há uma análise para salvar
+    if (!resultadoAtual || !resultadoAtual.resultado) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Atenção!',
+            text: 'Faça uma simulação antes de salvar!',
+            confirmButtonColor: '#3b82f6'
+        });
+        return;
+    }
+    
+    // Pedir descrição para a análise
+    const { value: descricao } = await Swal.fire({
+        title: 'Salvar Análise',
+        input: 'text',
+        inputLabel: 'Dê um nome para esta análise:',
+        inputPlaceholder: 'Ex: Análise Lote Janeiro 2025',
+        showCancelButton: true,
+        confirmButtonText: 'Salvar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#10b981',
+        inputValidator: (value) => {
+            if (!value) {
+                return 'Você precisa dar um nome para a análise!'
+            }
+        }
+    });
+    
+    if (descricao) {
+        try {
+            // Preparar dados para salvar
+            const analiseData = {
+                codigo: 'ANALISE-' + Date.now(),
+                descricao: descricao,
+                cenario: cenarioAtivo,
+                preco_compra: resultadoAtual.dados.precoCompra,
+                preco_venda: resultadoAtual.dados.precoVenda,
+                peso_inicial: resultadoAtual.dados.pesoInicial,
+                peso_final: resultadoAtual.dados.pesoFinal,
+                ganho_peso_projetado: resultadoAtual.dados.ganhoPesoProjetado,
+                rendimento_esperado: resultadoAtual.dados.rendimentoEsperado,
+                quantidade: resultadoAtual.dados.quantidade,
+                distancia_km: resultadoAtual.dados.distanciaKm,
+                preco_km: resultadoAtual.dados.precoKm,
+                protocolo_sanitario: resultadoAtual.dados.protocoloSanitario,
+                dias_cocho: resultadoAtual.diasCocho,
+                resultado_animal: resultadoAtual.resultado,
+                margem_percentual: resultadoAtual.lucroPercentual,
+                resultado_total: resultadoAtual.resultado * resultadoAtual.dados.quantidade
+            };
+            
+            // Salvar no Supabase
+            const { data, error } = await supabaseClient
+                .from('analise_confinamento')
+                .insert([analiseData]);
+                
+            if (!error) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: 'Análise salva com sucesso!',
+                    confirmButtonColor: '#10b981'
+                });
+            } else {
+                throw error;
+            }
+        } catch (error) {
+            console.error('Erro ao salvar:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: 'Erro ao salvar análise. Tente novamente.',
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    }
+}
+
+// Função para ver histórico
+function verHistorico() {
+    window.location.href = 'historico-analises.html';
+}
         // Inicializar
         window.addEventListener('load', () => {
             // Definir data padrão
