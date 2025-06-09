@@ -42,3 +42,11 @@ A plataforma é dividida em módulos que cobrem todas as operações do grupo:
 4. Execute o projeto
 
 ## Estrutura do Projeto
+ecossistema-acex/
+├── backend/       # API NestJS
+├── frontend/      # Aplicação Next.js
+└── docs/          # Documentação
+
+## Contribuição
+
+Este é um projeto privado do Grupo Acex Capital.
