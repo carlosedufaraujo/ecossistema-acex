@@ -212,7 +212,8 @@
                         localStorage.setItem('userNome', 'Administrador (Teste)');
                         
                         setTimeout(() => {
-                            window.location.href = 'dashboard.html';
+                            // CORREÇÃO: Redirecionamento para o caminho correto
+                            window.location.href = 'frontend/dashboard.html';
                         }, 1000);
                     } else {
                         showAlert('E-mail ou senha incorretos!', 'error');
@@ -235,7 +236,8 @@
                     
                     // Redirecionar para o dashboard
                     setTimeout(() => {
-                        window.location.href = 'dashboard.html';
+                        // CORREÇÃO: Redirecionamento para o caminho correto
+                        window.location.href = 'frontend/dashboard.html';
                     }, 1000);
                 }
             } catch (error) {
