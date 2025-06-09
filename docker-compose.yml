@@ -1,1 +1,62 @@
+version: '3.8'
 
+services:
+  postgres:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: acex_user
+      POSTGRES_PASSWORD: acex_password
+      POSTGRES_DB: acex_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - acex_network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - acex_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgresql://acex_user:acex_password@postgres:5432/acex_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: sua_chave_secreta_muito_segura
+      NODE_ENV: development
+    networks:
+      - acex_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - acex_network
+
+networks:
+  acex_network:
+
+volumes:
+  postgres_data:
