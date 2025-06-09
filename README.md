@@ -50,3 +50,7 @@ ecossistema-acex/
 ## Contribuição
 
 Este é um projeto privado do Grupo Acex Capital.
+ecossistema-acex/
+├── backend/       # API NestJS
+├── frontend/      # Aplicação Next.js
+└── docs/          # Documentação
