@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Lote - Ecossistema Acex</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Reutilizar estilos do dashboard.html */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .header {
+            background: #1e3c72;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #2a5298;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .back-button:hover {
+            text-decoration: underline;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .info-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-label {
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .info-value {
+            color: #333;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            height: 400px;
+        }
+        
+        .pesagens-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .btn-primary {
+            background: #2a5298;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-ativo {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: relative;
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Detalhes do Lote</h1>
+        <div class="user-info">
+            <span id="userEmail">-</span>
+            <a href="#" class="logout-btn" onclick="logout()">Sair</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <a href="dashboard.html" class="back-button">
+            ← Voltar ao Dashboard
+        </a>
+        
+        <div id="loadingContent" class="loading">
+            Carregando informações do lote...
+        </div>
+        
+        <div id="mainContent" style="display: none;">
+            <!-- Informações Gerais -->
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>📋 Informações Gerais</h3>
+                    <div class="info-item">
+                        <span class="info-label">Código:</span>
+                        <span class="info-value" id="infoCodigo">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Descrição:</span>
+                        <span class="info-value" id="infoDescricao">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="infoStatus">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Fazenda:</span>
+                        <span class="info-value" id="infoFazenda">-</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>🐂 Dados do Rebanho</h3>
+                    <div class="info-item">
+                        <span class="info-label">Quantidade:</span>
+                        <span class="info-value" id="infoQtdAnimais">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Peso Entrada:</span>
+                        <span class="info-value" id="infoPesoEntrada">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Peso Atual:</span>
+                        <span class="info-value" id="infoPesoAtual">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Ganho Total:</span>
+                        <span class="info-value" id="infoGanhoTotal">-</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>💰 Informações Financeiras</h3>
+                    <div class="info-item">
+                        <span class="info-label">Valor Compra:</span>
+                        <span class="info-value" id="infoValorCompra">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Valor Atual:</span>
+                        <span class="info-value" id="infoValorAtual">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Dias no Pasto:</span>
+                        <span class="info-value" id="infoDiasPasto">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">GMD:</span>
+                        <span class="info-value" id="infoGMD">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gráfico de Evolução -->
+            <div class="chart-container">
+                <h3>📈 Evolução do Peso</h3>
+                <canvas id="pesoChart"></canvas>
+            </div>
+            
+            <!-- Tabela de Pesagens -->
+            <div class="pesagens-section">
+                <div class="section-header">
+                    <h3>⚖️ Histórico de Pesagens</h3>
+                    <button class="btn-primary" onclick="abrirModalPesagem()">
+                        + Nova Pesagem
+                    </button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Peso Total (kg)</th>
+                            <th>Peso Médio (kg)</th>
+                            <th>Ganho (kg)</th>
+                            <th>GMD</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pesagensTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center;">
+                                Nenhuma pesagem registrada
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Nova Pesagem -->
+    <div id="pesagemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Pesagem</h3>
+                <button class="close-modal" onclick="fecharModal()">&times;</button>
+            </div>
+            
+            <form id="formNovaPesagem">
+                <div class="form-group">
+                    <label for="dataPesagem">Data da Pesagem*</label>
+                    <input type="date" id="dataPesagem" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pesoTotal">Peso Total (kg)*</label>
+                    <input type="number" id="pesoTotal" required step="0.01" min="0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="observacoes">Observações</label>
+                    <input type="text" id="observacoes" placeholder="Opcional">
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" style="background: #6c757d;" onclick="fecharModal()">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary" style="flex: 1;">
+                        Salvar Pesagem
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://yidrgpisaoaymlygjiha.supabase.com';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHJncGlzYW9heW1seWdqaWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MjM1OTksImV4cCI6MjA2NDk5OTU5OX0.Z0yJ3Iw7lR-nxlJo9HeTvQKm5cr0FMSc7Zj3Vr6AiJQ';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Variáveis globais
+        let loteId = null;
+        let loteData = null;
+        let chartInstance = null;
+        
+        // Verificar login
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+        
+        document.getElementById('userEmail').textContent = localStorage.getItem('userEmail') || '-';
+        
+        // Obter ID do lote da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        loteId = urlParams.get('id');
+        
+        if (!loteId) {
+            alert('ID do lote não encontrado!');
+            window.location.href = 'dashboard.html';
+        }
+        
+        // Funções
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+        
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor || 0);
+        }
+        
+        function formatarNumero(valor) {
+            return new Intl.NumberFormat('pt-BR').format(valor || 0);
+        }
+        
+        function formatarData(data) {
+            if (!data) return '-';
+            return new Date(data).toLocaleDateString('pt-BR');
+        }
+        
+        function calcularDias(dataInicio) {
+            const inicio = new Date(dataInicio);
+            const hoje = new Date();
+            const diffTime = Math.abs(hoje - inicio);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+        
+        // Carregar dados do lote
+        async function carregarLote() {
+            try {
+                // Buscar dados do lote
+                const { data: lote, error } = await supabaseClient
+                    .from('lote_gado')
+                    .select('*')
+                    .eq('id', loteId)
+                    .single();
+                
+                if (error || !lote) {
+                    alert('Lote não encontrado!');
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+                
+                loteData = lote;
+                
+                // Preencher informações
+                document.getElementById('infoCodigo').textContent = lote.codigo;
+                document.getElementById('infoDescricao').textContent = lote.descricao;
+                document.getElementById('infoStatus').innerHTML = `<span class="status-badge status-${lote.status.toLowerCase()}">${lote.status}</span>`;
+                document.getElementById('infoFazenda').textContent = lote.fazenda;
+                document.getElementById('infoQtdAnimais').textContent = lote.qtd_animais + ' animais';
+                document.getElementById('infoPesoEntrada').textContent = formatarNumero(lote.peso_entrada) + ' kg';
+                document.getElementById('infoValorCompra').textContent = formatarMoeda(lote.preco_compra);
+                
+                const diasPasto = calcularDias(lote.data_entrada);
+                document.getElementById('infoDiasPasto').textContent = diasPasto + ' dias';
+                
+                // Carregar pesagens
+                await carregarPesagens();
+                
+                // Mostrar conteúdo
+                document.getElementById('loadingContent').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Erro ao carregar lote:', error);
+                alert('Erro ao carregar dados do lote');
+            }
+        }
+        
+        // Carregar pesagens
+        async function carregarPesagens() {
+            try {
+                const { data: pesagens, error } = await supabaseClient
+                    .from('pesagem_lote')
+                    .select('*')
+                    .eq('lote_id', loteId)
+                    .order('data', { ascending: true });
+                
+                if (!error && pesagens && pesagens.length > 0) {
+                    // Adicionar pesagem inicial (entrada)
+                    const pesagensCompletas = [
+                        {
+                            data: loteData.data_entrada,
+                            peso: loteData.peso_entrada,
+                            observacoes: 'Peso de entrada'
+                        },
+                        ...pesagens
+                    ];
+                    
+                    // Atualizar peso atual e ganho
+                    const pesoAtual = pesagens[pesagens.length - 1].peso;
+                    const ganhoTotal = pesoAtual - loteData.peso_entrada;
+                    const gmd = ganhoTotal / calcularDias(loteData.data_entrada);
+                    
+                    document.getElementById('infoPesoAtual').textContent = formatarNumero(pesoAtual) + ' kg';
+                    document.getElementById('infoGanhoTotal').textContent = formatarNumero(ganhoTotal) + ' kg';
+                    document.getElementById('infoGMD').textContent = gmd.toFixed(2) + ' kg/dia';
+                    
+                    // Valor atual estimado (simplificado)
+                    const valorPorKg = loteData.preco_compra / loteData.peso_entrada;
+                    const valorAtual = valorPorKg * pesoAtual * 1.2; // 20% de margem
+                    document.getElementById('infoValorAtual').textContent = formatarMoeda(valorAtual);
+                    
+                    // Preencher tabela
+                    const tbody = document.getElementById('pesagensTableBody');
+                    tbody.innerHTML = pesagensCompletas.map((pesagem, index) => {
+                        const pesoAnterior = index > 0 ? pesagensCompletas[index - 1].peso : pesagem.peso;
+                        const ganho = pesagem.peso - pesoAnterior;
+                        const diasIntervalo = index > 0 ? 
+                            Math.ceil((new Date(pesagem.data) - new Date(pesagensCompletas[index - 1].data)) / (1000 * 60 * 60 * 24)) : 
+                            0;
+                        const gmdIntervalo = diasIntervalo > 0 ? ganho / diasIntervalo : 0;
+                        
+                        return `
+                            <tr>
+                                <td>${formatarData(pesagem.data)}</td>
+                                <td>${formatarNumero(pesagem.peso)} kg</td>
+                                <td>${formatarNumero((pesagem.peso / loteData.qtd_animais).toFixed(2))} kg</td>
+                                <td>${index > 0 ? '+' + formatarNumero(ganho) + ' kg' : '-'}</td>
+                                <td>${index > 0 ? gmdIntervalo.toFixed(2) + ' kg/dia' : '-'}</td>
+                                <td>${pesagem.observacoes || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                    
+                    // Criar gráfico
+                    criarGrafico(pesagensCompletas);
+                    
+                } else {
+                    document.getElementById('infoPesoAtual').textContent = formatarNumero(loteData.peso_entrada) + ' kg';
+                    document.getElementById('infoGanhoTotal').textContent = '0 kg';
+                    document.getElementById('infoGMD').textContent = '0 kg/dia';
+                    document.getElementById('infoValorAtual').textContent = formatarMoeda(loteData.preco_compra);
+                }
+                
+            } catch (error) {
+                console.error('Erro ao carregar pesagens:', error);
+            }
+        }
+        
+        // Criar gráfico
+        function criarGrafico(pesagens) {
+            const ctx = document.getElementById('pesoChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: pesagens.map(p => formatarData(p.data)),
+                    datasets: [{
+                        label: 'Peso Total (kg)',
+                        data: pesagens.map(p => p.peso),
+                        borderColor: '#2a5298',
+                        backgroundColor: 'rgba(42, 82, 152, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatarNumero(value) + ' kg';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Modal functions
+        function abrirModalPesagem() {
+            document.getElementById('pesagemModal').style.display = 'block';
+            document.getElementById('dataPesagem').valueAsDate = new Date();
+        }
+        
+        function fecharModal() {
+            document.getElementById('pesagemModal').style.display = 'none';
+            document.getElementById('formNovaPesagem').reset();
+        }
+        
+        // Salvar pesagem
+        document.getElementById('formNovaPesagem').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            try {
+                const novaPesagem = {
+                    lote_id: loteId,
+                    data: document.getElementById('dataPesagem').value,
+                    peso: parseFloat(document.getElementById('pesoTotal').value),
+                    observacoes: document.getElementById('observacoes').value || null
+                };
+                
+                const { error } = await supabaseClient
+                    .from('pesagem_lote')
+                    .insert([novaPesagem]);
+                
+                if (error) {
+                    alert('Erro ao salvar pesagem: ' + error.message);
+                } else {
+                    alert('Pesagem registrada com sucesso!');
+                    fecharModal();
+                    await carregarPesagens();
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar pesagem:', error);
+                alert('Erro ao salvar pesagem. Tente novamente.');
+            }
+        });
+        
+        // Carregar dados ao iniciar
+        carregarLote();
+    </script>
+</body>
+</html>
