@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ecossistema Acex - Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -86,6 +87,11 @@
             background: #1e3c72;
         }
         
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
         .alert {
             padding: 10px;
             margin-bottom: 20px;
@@ -103,6 +109,19 @@
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -126,14 +145,26 @@
                 <input type="password" id="senha" name="senha" required placeholder="Sua senha">
             </div>
             
-            <button type="submit">Entrar</button>
+            <button type="submit" id="submitBtn">Entrar</button>
+            
+            <div class="loading" id="loading">
+                Verificando credenciais...
+            </div>
         </form>
+        
+        <div style="margin-top: 20px; text-align: center; color: #666; font-size: 12px;">
+            <p>Login de teste: admin@acexcapital.com.br / admin123</p>
+        </div>
     </div>
     
     <script>
-        // Configuração do Supabase
+        // Configuração do Supabase - Use suas credenciais
         const SUPABASE_URL = 'https://yidrgpisaoaymlygjiha.supabase.com';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHJncGlzYW9heW1seWdqaWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MjM1OTksImV4cCI6MjA2NDk5OTU5OX0.Z0yJ3Iw7lR-nxlJo9HeTvQKm5cr0FMSc7Zj3Vr6AiJQ';
+        
+        // Inicializar Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // Função para mostrar alertas
         function showAlert(message, type) {
@@ -147,6 +178,12 @@
             }, 5000);
         }
         
+        // Função para mostrar/esconder loading
+        function setLoading(isLoading) {
+            document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
+            document.getElementById('submitBtn').disabled = isLoading;
+        }
+        
         // Função de login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -154,21 +191,77 @@
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
             
-            // Por enquanto, vamos fazer um login simulado
-            // Quando conectarmos com o Supabase, isso será substituído
-            if (email === 'admin@acexcapital.com.br' && senha === 'admin123') {
-                showAlert('Login realizado com sucesso!', 'success');
+            setLoading(true);
+            
+            try {
+                // Primeiro, vamos verificar se o usuário existe no banco
+                const { data: usuarios, error: userError } = await supabaseClient
+                    .from('usuario')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('senha', senha)
+                    .eq('ativo', true)
+                    .single();
                 
-                // Salvar informações do usuário
-                localStorage.setItem('userEmail', email);
-                localStorage.setItem('isLoggedIn', 'true');
+                if (userError || !usuarios) {
+                    // Se não encontrou no banco, tenta o login de teste
+                    if (email === 'admin@acexcapital.com.br' && senha === 'admin123') {
+                        showAlert('Login de teste realizado com sucesso!', 'info');
+                        localStorage.setItem('userEmail', email);
+                        localStorage.setItem('isLoggedIn', 'true');
+                        localStorage.setItem('userNome', 'Administrador (Teste)');
+                        
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 1000);
+                    } else {
+                        showAlert('E-mail ou senha incorretos!', 'error');
+                    }
+                } else {
+                    // Login com sucesso no banco de dados
+                    showAlert('Login realizado com sucesso!', 'success');
+                    
+                    // Salvar informações do usuário
+                    localStorage.setItem('userEmail', usuarios.email);
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('userId', usuarios.id);
+                    localStorage.setItem('userNome', usuarios.nome);
+                    
+                    // Atualizar último login
+                    await supabaseClient
+                        .from('usuario')
+                        .update({ ultimo_login: new Date().toISOString() })
+                        .eq('id', usuarios.id);
+                    
+                    // Redirecionar para o dashboard
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Erro no login:', error);
+                showAlert('Erro ao conectar com o servidor. Tente novamente.', 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        // Verificar conexão com Supabase ao carregar a página
+        window.addEventListener('load', async () => {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('empresa')
+                    .select('count')
+                    .limit(1);
                 
-                // Redirecionar para o dashboard após 1 segundo
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 1000);
-            } else {
-                showAlert('E-mail ou senha incorretos!', 'error');
+                if (!error) {
+                    console.log('✅ Conexão com Supabase estabelecida!');
+                } else {
+                    console.error('❌ Erro na conexão com Supabase:', error);
+                    showAlert('Aviso: Sistema em modo offline', 'info');
+                }
+            } catch (error) {
+                console.error('❌ Erro na conexão:', error);
             }
         });
     </script>
