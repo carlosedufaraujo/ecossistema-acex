@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecossistema Acex - Dashboard Debug</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .debug-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        
+        button {
+            background: #2a5298;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #1e3c72;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h2>🔍 Debug do Dashboard - Ecossistema Acex</h2>
+        <div id="status" class="status info">Iniciando testes...</div>
+        
+        <button onclick="window.location.href='dashboard.html'">Voltar ao Dashboard</button>
+        <button onclick="window.location.href='login.html'">Voltar ao Login</button>
+        <button onclick="testConnection()">Testar Conexão</button>
+        <button onclick="testQueries()">Testar Queries</button>
+        <button onclick="clearAndReload()">Limpar Cache e Recarregar</button>
+    </div>
+    
+    <div class="debug-container">
+        <h2>📊 Informações da Sessão</h2>
+        <div id="sessionInfo"></div>
+    </div>
+    
+    <div class="debug-container">
+        <h2>🔌 Teste de Conexão Supabase</h2>
+        <div id="connectionTest"></div>
+    </div>
+    
+    <div class="debug-container">
+        <h2>📋 Teste de Queries</h2>
+        <div id="queryTest"></div>
+    </div>
+    
+    <div class="debug-container">
+        <h2>📈 Dados Encontrados</h2>
+        <div id="dataFound"></div>
+    </div>
+    
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://yidrgpisaoaymlygjiha.supabase.com';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHJncGlzYW9heW1seWdqaWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MjM1OTksImV4cCI6MjA2NDk5OTU5OX0.Z0yJ3Iw7lR-nxlJo9HeTvQKm5cr0FMSc7Zj3Vr6AiJQ';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Função para atualizar status
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        // Mostrar informações da sessão
+        function showSessionInfo() {
+            const sessionInfo = {
+                'Usuário Logado': localStorage.getItem('isLoggedIn') === 'true' ? 'Sim' : 'Não',
+                'Email': localStorage.getItem('userEmail') || 'Não definido',
+                'Nome': localStorage.getItem('userNome') || 'Não definido',
+                'User ID': localStorage.getItem('userId') || 'Não definido',
+                'URL Atual': window.location.href,
+                'Supabase URL': SUPABASE_URL
+            };
+            
+            const html = Object.entries(sessionInfo)
+                .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                .join('<br>');
+            
+            document.getElementById('sessionInfo').innerHTML = html;
+        }
+        
+        // Testar conexão
+        async function testConnection() {
+            updateStatus('Testando conexão com Supabase...', 'info');
+            const testEl = document.getElementById('connectionTest');
+            
+            try {
+                const startTime = Date.now();
+                const { data, error } = await supabaseClient
+                    .from('empresa')
+                    .select('count')
+                    .limit(1);
+                
+                const responseTime = Date.now() - startTime;
+                
+                if (error) {
+                    testEl.innerHTML = `
+                        <div class="status error">
+                            ❌ Erro na conexão: ${error.message}
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                    updateStatus('Erro na conexão com Supabase', 'error');
+                } else {
+                    testEl.innerHTML = `
+                        <div class="status success">
+                            ✅ Conexão estabelecida com sucesso!
+                            <br>Tempo de resposta: ${responseTime}ms
+                        </div>
+                    `;
+                    updateStatus('Conexão OK', 'success');
+                }
+            } catch (error) {
+                testEl.innerHTML = `
+                    <div class="status error">
+                        ❌ Erro crítico: ${error.message}
+                    </div>
+                `;
+                updateStatus('Erro crítico na conexão', 'error');
+            }
+        }
+        
+        // Testar queries
+        async function testQueries() {
+            updateStatus('Testando queries no banco de dados...', 'info');
+            const testEl = document.getElementById('queryTest');
+            let html = '';
+            
+            // Lista de tabelas para testar
+            const tables = ['empresa', 'pessoa', 'lote_gado', 'usuario', 'perfil'];
+            
+            for (const table of tables) {
+                try {
+                    const { data, error, count } = await supabaseClient
+                        .from(table)
+                        .select('*', { count: 'exact', head: false })
+                        .limit(5);
+                    
+                    if (error) {
+                        html += `
+                            <div class="status error">
+                                ❌ Erro ao consultar ${table}: ${error.message}
+                                <pre>${JSON.stringify(error, null, 2)}</pre>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="status success">
+                                ✅ Tabela ${table}: ${data.length} registros encontrados
+                            </div>
+                        `;
+                        
+                        // Se houver dados, mostrar uma amostra
+                        if (data.length > 0) {
+                            const sample = data[0];
+                            const fields = Object.keys(sample).slice(0, 5).join(', ');
+                            html += `<small>Campos: ${fields}...</small><br>`;
+                        }
+                    }
+                } catch (error) {
+                    html += `
+                        <div class="status error">
+                            ❌ Erro crítico em ${table}: ${error.message}
+                        </div>
+                    `;
+                }
+            }
+            
+            testEl.innerHTML = html;
+            updateStatus('Testes de query concluídos', 'info');
+        }
+        
+        // Buscar e mostrar dados específicos
+        async function showData() {
+            const dataEl = document.getElementById('dataFound');
+            let html = '<h3>Lotes de Gado:</h3>';
+            
+            try {
+                // Buscar lotes
+                const { data: lotes, error } = await supabaseClient
+                    .from('lote_gado')
+                    .select('*')
+                    .order('criado_em', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    html += `<div class="status error">Erro: ${error.message}</div>`;
+                } else if (lotes.length === 0) {
+                    html += `<div class="status info">Nenhum lote encontrado no banco de dados.</div>`;
+                } else {
+                    html += `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Qtd Animais</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    lotes.forEach(lote => {
+                        html += `
+                            <tr>
+                                <td>${lote.codigo}</td>
+                                <td>${lote.descricao}</td>
+                                <td>${lote.qtd_animais}</td>
+                                <td>${lote.status}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                }
+                
+                // Buscar totais
+                const { data: lotesAtivos } = await supabaseClient
+                    .from('lote_gado')
+                    .select('*')
+                    .eq('status', 'ATIVO');
+                
+                if (lotesAtivos) {
+                    let pesoTotal = 0;
+                    let valorTotal = 0;
+                    let totalAnimais = 0;
+                    
+                    lotesAtivos.forEach(lote => {
+                        pesoTotal += parseFloat(lote.peso_entrada || 0);
+                        valorTotal += parseFloat(lote.preco_compra || 0);
+                        totalAnimais += parseInt(lote.qtd_animais || 0);
+                    });
+                    
+                    html += `
+                        <h3>Resumo dos Lotes Ativos:</h3>
+                        <ul>
+                            <li>Total de Lotes Ativos: ${lotesAtivos.length}</li>
+                            <li>Peso Total: ${pesoTotal.toLocaleString('pt-BR')} kg</li>
+                            <li>Valor Total: R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</li>
+                            <li>Total de Animais: ${totalAnimais}</li>
+                        </ul>
+                    `;
+                }
+                
+            } catch (error) {
+                html += `<div class="status error">Erro crítico: ${error.message}</div>`;
+            }
+            
+            dataEl.innerHTML = html;
+        }
+        
+        // Limpar cache e recarregar
+        function clearAndReload() {
+            if (confirm('Isso vai limpar o cache e fazer logout. Continuar?')) {
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Executar testes ao carregar
+        window.addEventListener('load', async () => {
+            showSessionInfo();
+            await testConnection();
+            await testQueries();
+            await showData();
+        });
+    </script>
+</body>
+</html>
