@@ -1,0 +1,412 @@
+// Este é o esquema Prisma para o Ecossistema Acex
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Sistema de Autenticação e Autorização
+model Usuario {
+  id            String    @id @default(uuid())
+  nome          String
+  email         String    @unique
+  senha         String
+  ativo         Boolean   @default(true)
+  primeiroAcesso Boolean  @default(true)
+  foto          String?
+  cargo         String?
+  departamento  String?
+  perfil        Perfil    @relation(fields: [perfilId], references: [id])
+  perfilId      String
+  empresa       Empresa   @relation(fields: [empresaId], references: [id])
+  empresaId     String
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+  ultimoLogin   DateTime?
+  tokens        Token[]
+  pessoaId      String?   @unique
+  pessoa        Pessoa?   @relation(fields: [pessoaId], references: [id])
+}
+
+model Token {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  tipo      String   // refresh, reset-password, etc.
+  expiraEm  DateTime
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  criadoEm  DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([token])
+}
+
+model Perfil {
+  id          String       @id @default(uuid())
+  nome        String       @unique
+  descricao   String?
+  permissoes  Permissao[]
+  usuarios    Usuario[]
+  criadoEm    DateTime     @default(now())
+  atualizadoEm DateTime    @updatedAt
+}
+
+model Permissao {
+  id          String   @id @default(uuid())
+  codigo      String   @unique // formato: modulo.acao (ex: financeiro.criar)
+  descricao   String
+  perfis      Perfil[]
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+// Entidades Principais
+model Empresa {
+  id             String          @id @default(uuid())
+  razaoSocial    String
+  nomeFantasia   String?
+  cnpj           String          @unique
+  inscEstadual   String?
+  endereco       String?
+  cidade         String?
+  estado         String?
+  cep            String?
+  telefone       String?
+  email          String?
+  website        String?
+  logo           String?
+  matriz         Boolean         @default(false)
+  ativa          Boolean         @default(true)
+  observacoes    String?
+  criadoEm       DateTime        @default(now())
+  atualizadoEm   DateTime        @updatedAt
+  usuarios       Usuario[]
+  centrosCusto   CentroCusto[]
+  contasBancarias ContaBancaria[]
+  documentos     Documento[]
+  pessoas        PessoaEmpresa[]
+  contratos      Contrato[]
+  movimentos     MovimentoFinanceiro[]
+}
+
+model Pessoa {
+  id            String          @id @default(uuid())
+  tipo          TipoPessoa
+  nome          String
+  cpfCnpj       String          @unique
+  rgInscricao   String?
+  dataNascimento DateTime?
+  endereco      String?
+  cidade        String?
+  estado        String?
+  cep           String?
+  telefone      String?
+  celular       String?
+  email         String?
+  observacoes   String?
+  ativo         Boolean         @default(true)
+  criadoEm      DateTime        @default(now())
+  atualizadoEm  DateTime        @updatedAt
+  usuario       Usuario?
+  empresas      PessoaEmpresa[]
+  documentos    Documento[]
+  contratos     Contrato[]
+  lotes         LoteGado[]
+  movimentos    MovimentoFinanceiro[]
+}
+
+enum TipoPessoa {
+  FISICA
+  JURIDICA
+}
+
+model PessoaEmpresa {
+  id          String       @id @default(uuid())
+  pessoa      Pessoa       @relation(fields: [pessoaId], references: [id])
+  pessoaId    String
+  empresa     Empresa      @relation(fields: [empresaId], references: [id])
+  empresaId   String
+  tipo        TipoRelacao
+  criadoEm    DateTime     @default(now())
+  atualizadoEm DateTime    @updatedAt
+
+  @@unique([pessoaId, empresaId, tipo])
+}
+
+enum TipoRelacao {
+  CLIENTE
+  FORNECEDOR
+  COLABORADOR
+  PARCEIRO
+  OUTRO
+}
+
+// Módulo Financeiro
+model PlanoContas {
+  id          String        @id @default(uuid())
+  codigo      String        @unique
+  descricao   String
+  tipo        TipoConta
+  natureza    NaturezaConta
+  analitica   Boolean       @default(true)
+  contaPai    PlanoContas?  @relation("SubContas", fields: [contaPaiId], references: [id])
+  contaPaiId  String?
+  subContas   PlanoContas[] @relation("SubContas")
+  ativo       Boolean       @default(true)
+  criadoEm    DateTime      @default(now())
+  atualizadoEm DateTime     @updatedAt
+  movimentos  MovimentoFinanceiro[]
+}
+
+enum TipoConta {
+  ATIVO
+  PASSIVO
+  RECEITA
+  DESPESA
+  PATRIMONIO
+}
+
+enum NaturezaConta {
+  DEVEDORA
+  CREDORA
+}
+
+model CentroCusto {
+  id           String        @id @default(uuid())
+  codigo       String        @unique
+  descricao    String
+  empresa      Empresa       @relation(fields: [empresaId], references: [id])
+  empresaId    String
+  ativo        Boolean       @default(true)
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+  movimentos   MovimentoFinanceiro[]
+}
+
+model ContaBancaria {
+  id            String        @id @default(uuid())
+  descricao     String
+  banco         String
+  agencia       String
+  conta         String
+  tipo          TipoConta
+  saldoInicial  Decimal       @default(0)
+  dataAbertura  DateTime
+  empresa       Empresa       @relation(fields: [empresaId], references: [id])
+  empresaId     String
+  ativa         Boolean       @default(true)
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
+  movimentos    MovimentoFinanceiro[]
+  extratos      ExtratoBancario[]
+}
+
+model MovimentoFinanceiro {
+  id              String        @id @default(uuid())
+  tipo            TipoMovimento
+  numero          String?       // Número do documento
+  dataEmissao     DateTime
+  dataVencimento  DateTime
+  dataPagamento   DateTime?
+  valor           Decimal
+  valorPago       Decimal?
+  descricao       String
+  observacoes     String?
+  status          StatusMovimento @default(ABERTO)
+  formaPagamento  FormaPagamento?
+  contaBancaria   ContaBancaria? @relation(fields: [contaBancariaId], references: [id])
+  contaBancariaId String?
+  centroCusto     CentroCusto    @relation(fields: [centroCustoId], references: [id])
+  centroCustoId   String
+  planoContas     PlanoContas    @relation(fields: [planoContasId], references: [id])
+  planoContasId   String
+  empresa         Empresa        @relation(fields: [empresaId], references: [id])
+  empresaId       String
+  pessoa          Pessoa?        @relation(fields: [pessoaId], references: [id])
+  pessoaId        String?
+  contrato        Contrato?      @relation(fields: [contratoId], references: [id])
+  contratoId      String?
+  extratoId       String?
+  extrato         ExtratoBancario? @relation(fields: [extratoId], references: [id])
+  conciliado      Boolean        @default(false)
+  criadoEm        DateTime       @default(now())
+  atualizadoEm    DateTime       @updatedAt
+
+  @@index([dataVencimento])
+  @@index([dataEmissao])
+  @@index([status])
+  @@index([empresaId])
+}
+
+enum TipoMovimento {
+  RECEITA
+  DESPESA
+  TRANSFERENCIA
+}
+
+enum StatusMovimento {
+  ABERTO
+  PAGO
+  CANCELADO
+  ATRASADO
+  PARCIAL
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  CHEQUE
+  CARTAO
+  BOLETO
+  PIX
+  TRANSFERENCIA
+  OUTRO
+}
+
+model ExtratoBancario {
+  id              String        @id @default(uuid())
+  contaBancaria   ContaBancaria @relation(fields: [contaBancariaId], references: [id])
+  contaBancariaId String
+  dataMovimento   DateTime
+  descricao       String
+  documento       String?
+  valor           Decimal
+  tipo            TipoLancamento
+  saldo           Decimal
+  conciliado      Boolean       @default(false)
+  movimentos      MovimentoFinanceiro[]
+  criadoEm        DateTime      @default(now())
+  atualizadoEm    DateTime      @updatedAt
+
+  @@index([dataMovimento])
+  @@index([contaBancariaId])
+}
+
+enum TipoLancamento {
+  CREDITO
+  DEBITO
+}
+
+// Módulo CEAC (Operações de Gado)
+model LoteGado {
+  id              String        @id @default(uuid())
+  codigo          String        @unique
+  descricao       String
+  dataEntrada     DateTime
+  dataSaida       DateTime?
+  qtdAnimais      Int
+  pesoEntrada     Decimal
+  pesoSaida       Decimal?
+  precoCompra     Decimal
+  precoVenda      Decimal?
+  proprietario    Pessoa        @relation(fields: [proprietarioId], references: [id])
+  proprietarioId  String
+  fazenda         String
+  status          StatusLote    @default(ATIVO)
+  observacoes     String?
+  contrato        Contrato?     @relation(fields: [contratoId], references: [id])
+  contratoId      String?
+  criadoEm        DateTime      @default(now())
+  atualizadoEm    DateTime      @updatedAt
+  pesagens        PesagemLote[]
+  documentos      Documento[]
+
+  @@index([status])
+  @@index([proprietarioId])
+}
+
+enum StatusLote {
+  ATIVO
+  VENDIDO
+  BAIXA
+  ENCERRADO
+}
+
+model PesagemLote {
+  id          String    @id @default(uuid())
+  lote        LoteGado  @relation(fields: [loteId], references: [id])
+  loteId      String
+  data        DateTime
+  peso        Decimal
+  observacoes String?
+  criadoEm    DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([loteId])
+  @@index([data])
+}
+
+model Contrato {
+  id             String           @id @default(uuid())
+  numero         String           @unique
+  tipo           TipoContrato
+  descricao      String
+  dataInicio     DateTime
+  dataFim        DateTime
+  valor          Decimal
+  status         StatusContrato   @default(ATIVO)
+  observacoes    String?
+  empresa        Empresa          @relation(fields: [empresaId], references: [id])
+  empresaId      String
+  pessoa         Pessoa           @relation(fields: [pessoaId], references: [id])
+  pessoaId       String
+  lotes          LoteGado[]
+  documentos     Documento[]
+  movimentos     MovimentoFinanceiro[]
+  criadoEm       DateTime         @default(now())
+  atualizadoEm   DateTime         @updatedAt
+}
+
+enum TipoContrato {
+  ENGORDA
+  PARCERIA
+  PRESTACAO_SERVICO
+  COMPRA_VENDA
+  OUTRO
+}
+
+enum StatusContrato {
+  ATIVO
+  ENCERRADO
+  CANCELADO
+}
+
+// Gestão Eletrônica de Documentos (GED)
+model Documento {
+  id           String         @id @default(uuid())
+  titulo       String
+  descricao    String?
+  tipo         TipoDocumento
+  arquivo      String         // Caminho ou URL do arquivo
+  tamanho      Int?           // Tamanho em bytes
+  formato      String?        // Extensão do arquivo
+  versao       String         @default("1.0")
+  tags         String?        // Tags separadas por vírgula
+  empresa      Empresa        @relation(fields: [empresaId], references: [id])
+  empresaId    String
+  pessoa       Pessoa?        @relation(fields: [pessoaId], references: [id])
+  pessoaId     String?
+  loteGado     LoteGado?      @relation(fields: [loteGadoId], references: [id])
+  loteGadoId   String?
+  contrato     Contrato?      @relation(fields: [contratoId], references: [id])
+  contratoId   String?
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+
+  @@index([tipo])
+  @@index([empresaId])
+}
+
+enum TipoDocumento {
+  CONTRATO
+  NOTA_FISCAL
+  RECIBO
+  COMPROVANTE
+  RELATORIO
+  GTA
+  ATESTADO
+  OUTRO
+}
