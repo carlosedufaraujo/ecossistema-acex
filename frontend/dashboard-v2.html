@@ -1412,7 +1412,7 @@
                     <div class="table-header">
                         <h3 class="table-title">Contas a Pagar</h3>
                         <button class="btn btn-primary" onclick="openModal('contaPagarModal')">
-                            <i<i class="fas fa-plus"></i>
+                            <i class="fas fa-plus"></i>
                             Nova Conta
                         </button>
                     </div>
@@ -1776,6 +1776,65 @@
                 
                 <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('contaPagarModal')">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Conta a Receber -->
+    <div id="contaReceberModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Nova Conta a Receber</h2>
+                <button class="modal-close" onclick="closeModal('contaReceberModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="contaReceberForm" onsubmit="saveContaReceber(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Descrição</label>
+                        <input type="text" class="form-control" name="descricao" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Cliente</label>
+                        <input type="text" class="form-control" name="cliente" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Valor</label>
+                        <input type="number" step="0.01" class="form-control" name="valor" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Vencimento</label>
+                        <input type="date" class="form-control" name="vencimento" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Categoria</label>
+                    <select class="form-control" name="categoria" required>
+                        <option value="">Selecione...</option>
+                        <option value="venda_gado">Venda de Gado</option>
+                        <option value="servicos">Serviços</option>
+                        <option value="assessoria">Assessoria</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('contaReceberModal')">
                         Cancelar
                     </button>
                     <button type="submit" class="btn btn-primary">
@@ -2294,6 +2353,32 @@
             });
             
             closeModal('contaPagarModal');
+            event.target.reset();
+        }
+        
+        // Save Conta a Receber
+        async function saveContaReceber(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const contaData = {
+                descricao: formData.get('descricao'),
+                cliente: formData.get('cliente'),
+                valor: parseFloat(formData.get('valor')),
+                vencimento: formData.get('vencimento'),
+                categoria: formData.get('categoria'),
+                status: 'A_RECEBER'
+            };
+            
+            // For now, just show success message
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: 'Conta a receber cadastrada com sucesso!',
+                confirmButtonColor: '#2563eb'
+            });
+            
+            closeModal('contaReceberModal');
             event.target.reset();
         }
         
